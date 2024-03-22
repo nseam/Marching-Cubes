@@ -1,8 +1,5 @@
-using System;
-using System.Collections;
 using System.Collections.Generic;
-
-using UnityEngine;
+using WARP.Terraform.API;
 
 namespace MarchingCubesProject
 {
@@ -14,9 +11,9 @@ namespace MarchingCubesProject
         public float Surface { get; set; }
 
         /// <summary>
-        /// 
+        /// Cube corner values.
         /// </summary>
-        private float[] Cube { get; set; }
+        private TerraformPoint[] inPoints { get; set; }
 
         /// <summary>
         /// Winding order of triangles use 2,1,0 or 0,1,2
@@ -29,8 +26,8 @@ namespace MarchingCubesProject
         /// <param name="surface"></param>
         public Marching(float surface)
         {
-            Surface = surface;
-            Cube = new float[8];
+            Surface      = surface;
+            inPoints     = new TerraformPoint[8];
             WindingOrder = new int[] { 0, 1, 2 };
         }
 
@@ -39,13 +36,12 @@ namespace MarchingCubesProject
         /// </summary>
         /// <param name="voxels"></param>
         /// <param name="verts"></param>
-        /// <param name="indices"></param>
-        public virtual void Generate(float[,,] voxels, IList<Vector3> verts, IList<int> indices)
+        /// <param name="outIndices"></param>
+        public virtual void Generate(VoxelArray voxels, IList<TerraformPoint> outPoints, IList<int> outIndices)
         {
-
-            int width = voxels.GetLength(0);
-            int height = voxels.GetLength(1);
-            int depth = voxels.GetLength(2);
+            int width = voxels.Width;
+            int height = voxels.Height;
+            int depth = voxels.Depth;
 
             UpdateWindingOrder();
 
@@ -64,11 +60,11 @@ namespace MarchingCubesProject
                             iy = y + VertexOffset[i, 1];
                             iz = z + VertexOffset[i, 2];
 
-                            Cube[i] = voxels[ix, iy, iz];
+                            inPoints[i] = voxels.Voxels[ix + iy * width + iz * width * height];
                         }
 
                         //Perform algorithm
-                        March(x, y, z, Cube, verts, indices);
+                        March(x, y, z, inPoints, outPoints, outIndices);
                     }
                 }
             }
@@ -78,15 +74,8 @@ namespace MarchingCubesProject
         /// <summary>
         /// 
         /// </summary>
-        /// <param name="voxels"></param>
-        /// <param name="width"></param>
-        /// <param name="height"></param>
-        /// <param name="depth"></param>
-        /// <param name="verts"></param>
-        /// <param name="indices"></param>
-        public virtual void Generate(IList<float> voxels, int width, int height, int depth, IList<Vector3> verts, IList<int> indices)
+        public virtual void Generate(IList<TerraformPoint> voxels, int width, int height, int depth, IList<TerraformPoint> outPoints, IList<int> outIndices)
         {
-
             UpdateWindingOrder();
 
             int x, y, z, i;
@@ -104,11 +93,11 @@ namespace MarchingCubesProject
                             iy = y + VertexOffset[i, 1];
                             iz = z + VertexOffset[i, 2];
 
-                            Cube[i] = voxels[ix + iy * width + iz * width * height];
+                            inPoints[i] = voxels[ix + iy * width + iz * width * height];
                         }
 
                         //Perform algorithm
-                        March(x, y, z, Cube, verts, indices);
+                        March(x, y, z, inPoints, outPoints, outIndices);
                     }
                 }
             }
@@ -138,7 +127,7 @@ namespace MarchingCubesProject
          /// <summary>
         /// MarchCube performs the Marching algorithm on a single cube
         /// </summary>
-        protected abstract void March(float x, float y, float z, float[] cube, IList<Vector3> vertList, IList<int> indexList);
+        protected abstract void March(float x, float y, float z, TerraformPoint[] inPoints, IList<TerraformPoint> outPoints, IList<int> outIndices);
 
         /// <summary>
         /// GetOffset finds the approximate point of intersection of the surface

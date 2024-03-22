@@ -1,37 +1,39 @@
+
 using System;
 using System.Collections;
 using System.Collections.Generic;
 
 using UnityEngine;
+using WARP.Terraform.API;
 
 namespace MarchingCubesProject
 {
     public class MarchingTertrahedron : Marching
     {
 
-        private Vector3[] EdgeVertex { get; set; }
+        private TerraformPoint[] TemporaryPoints { get; set; }
 
         private Vector3[] CubePosition { get; set; }
 
         private Vector3[] TetrahedronPosition { get; set; }
 
-        private float[] TetrahedronValue { get; set; }
+        private TerraformPoint[] TetrahedronValue { get; set; }
 
         public MarchingTertrahedron(float surface = 0.0f)
             : base(surface)
         {
-            EdgeVertex = new Vector3[6];
+            TemporaryPoints = new TerraformPoint[6];
             CubePosition = new Vector3[8];
             TetrahedronPosition = new Vector3[4];
-            TetrahedronValue = new float[4];
+            TetrahedronValue = new TerraformPoint[4];
         }
 
         /// <summary>
         /// MarchCubeTetrahedron performs the Marching Tetrahedrons algorithm on a single cube
         /// </summary>
-        protected override void March(float x, float y, float z, float[] cube, IList<Vector3> vertList, IList<int> indexList)
+        protected override void March(float x, float y, float z, TerraformPoint[] inPoints, IList<TerraformPoint> outPoints, IList<int> outIndices)
         {
-            int i, j, vertexInACube;
+            int i;
 
             //Make a local copy of the cube's corner positions
             for (i = 0; i < 8; i++)
@@ -43,34 +45,37 @@ namespace MarchingCubesProject
 
             for (i = 0; i < 6; i++)
             {
-                for (j = 0; j < 4; j++)
+                for (int j = 0; j < 4; j++)
                 {
-                    vertexInACube = TetrahedronsInACube[i, j];
+                    int vertexInACube = TetrahedronsInACube[i, j];
                     TetrahedronPosition[j] = CubePosition[vertexInACube];
-                    TetrahedronValue[j] = cube[vertexInACube];
+                    TetrahedronValue[j]    = inPoints[vertexInACube];
                 }
 
-                MarchTetrahedron(vertList, indexList);
+                MarchTetrahedron(outPoints, outIndices);
             }
         }
 
         /// <summary>
         /// MarchTetrahedron performs the Marching Tetrahedrons algorithm on a single tetrahedron
         /// </summary>
-        private void MarchTetrahedron(IList<Vector3> vertList, IList<int> indexList)
+        private void MarchTetrahedron(IList<TerraformPoint> outPoints, IList<int> outIndices)
         {
             int i, j, vert, vert0, vert1, idx;
             int flagIndex = 0, edgeFlags;
             float offset, invOffset;
 
             //Find which vertices are inside of the surface and which are outside
-            for (i = 0; i < 4; i++) if (TetrahedronValue[i] <= Surface) flagIndex |= 1 << i;
+            for (i = 0; i < 4; i++)
+                if (TetrahedronValue[i].Density <= Surface)
+                    flagIndex |= 1 << i;
 
             //Find which edges are intersected by the surface
             edgeFlags = TetrahedronEdgeFlags[flagIndex];
 
             //If the tetrahedron is entirely inside or outside of the surface, then there will be no intersections
-            if (edgeFlags == 0) return;
+            if (edgeFlags == 0)
+                return;
 
             //Find the point of intersection of the surface with each edge
             for (i = 0; i < 6; i++)
@@ -80,12 +85,15 @@ namespace MarchingCubesProject
                 {
                     vert0 = TetrahedronEdgeConnection[i, 0];
                     vert1 = TetrahedronEdgeConnection[i, 1];
-                    offset = GetOffset(TetrahedronValue[vert0], TetrahedronValue[vert1]);
+                    offset = GetOffset(TetrahedronValue[vert0].Density, TetrahedronValue[vert1].Density);
                     invOffset = 1.0f - offset;
 
-                    EdgeVertex[i].x = invOffset * TetrahedronPosition[vert0].x + offset * TetrahedronPosition[vert1].x;
-                    EdgeVertex[i].y = invOffset * TetrahedronPosition[vert0].y + offset * TetrahedronPosition[vert1].y;
-                    EdgeVertex[i].z = invOffset * TetrahedronPosition[vert0].z + offset * TetrahedronPosition[vert1].z;
+                    TemporaryPoints[i] = TetrahedronValue[vert0];
+                    TemporaryPoints[i].Position = new Vector3(
+                        invOffset * TetrahedronPosition[vert0].x + offset * TetrahedronPosition[vert1].x,
+                        invOffset * TetrahedronPosition[vert0].y + offset * TetrahedronPosition[vert1].y,
+                        invOffset * TetrahedronPosition[vert0].z + offset * TetrahedronPosition[vert1].z
+                    );
                 }
             }
 
@@ -94,13 +102,13 @@ namespace MarchingCubesProject
             {
                 if (TetrahedronTriangles[flagIndex, 3 * i] < 0) break;
 
-                idx = vertList.Count;
+                idx = outPoints.Count;
 
                 for (j = 0; j < 3; j++)
                 {
                     vert = TetrahedronTriangles[flagIndex, 3 * i + j];
-                    indexList.Add(idx + WindingOrder[j]);
-                    vertList.Add(EdgeVertex[vert]);
+                    outIndices.Add(idx + WindingOrder[j]);
+                    outPoints.Add(TemporaryPoints[vert]);
                 }
             }
         }

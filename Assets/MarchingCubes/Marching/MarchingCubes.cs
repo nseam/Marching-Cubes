@@ -3,30 +3,34 @@ using System.Collections;
 using System.Collections.Generic;
 
 using UnityEngine;
+using UnityEngine.UIElements;
+using WARP.Core.API;
+using WARP.Terraform.API;
 
 namespace MarchingCubesProject
 {
     public class MarchingCubes : Marching
     {
-
-        private Vector3[] EdgeVertex { get; set; }
+        private Vector3[] TemporaryEdgeVertices { get; set; }
+        private TerraformPoint[] TemporaryPoints { get; set; }
 
         public MarchingCubes(float surface = 0.0f) : base(surface)
         {
-            EdgeVertex = new Vector3[12];
+            TemporaryEdgeVertices = new Vector3[12];
+			TemporaryPoints = new TerraformPoint[12];
         }
 
         /// <summary>
         /// MarchCube performs the Marching Cubes algorithm on a single cube
         /// </summary>
-        protected override void March(float x, float y, float z, float[] cube, IList<Vector3> vertList, IList<int> indexList)
+        protected override void March(float x, float y, float z, TerraformPoint[] inPoints, IList<TerraformPoint> outPoints, IList<int> outIndices)
         {
-            int i, j, vert, idx;
+            int i, newTriangleIdx, vertexIdx, currIdx;
             int flagIndex = 0;
             float offset = 0.0f;
 
             //Find which vertices are inside of the surface and which are outside
-            for (i = 0; i < 8; i++) if (cube[i] <= Surface) flagIndex |= 1 << i;
+            for (i = 0; i < 8; i++) if (inPoints[i].Density <= Surface) flagIndex |= 1 << i;
 
             //Find which edges are intersected by the surface
             int edgeFlags = CubeEdgeFlags[flagIndex];
@@ -40,26 +44,31 @@ namespace MarchingCubesProject
                 //if there is an intersection on this edge
                 if ((edgeFlags & (1 << i)) != 0)
                 {
-                    offset = GetOffset(cube[EdgeConnection[i, 0]], cube[EdgeConnection[i, 1]]);
+                    offset = GetOffset(inPoints[EdgeConnection[i, 0]].Density, inPoints[EdgeConnection[i, 1]].Density);
 
-                    EdgeVertex[i].x = x + (VertexOffset[EdgeConnection[i, 0], 0] + offset * EdgeDirection[i, 0]);
-                    EdgeVertex[i].y = y + (VertexOffset[EdgeConnection[i, 0], 1] + offset * EdgeDirection[i, 1]);
-                    EdgeVertex[i].z = z + (VertexOffset[EdgeConnection[i, 0], 2] + offset * EdgeDirection[i, 2]);
+                    TemporaryPoints[i].Color = Color.white;
+
+                    TemporaryPoints[i].Position = new Vector3(
+                        x + (VertexOffset[EdgeConnection[i, 0], 0] + offset * EdgeDirection[i, 0]),
+                        y + (VertexOffset[EdgeConnection[i, 0], 1] + offset * EdgeDirection[i, 1]),
+                        z + (VertexOffset[EdgeConnection[i, 0], 2] + offset * EdgeDirection[i, 2])
+                    );
                 }
             }
 
             //Save the triangles that were found. There can be up to five per cube
             for (i = 0; i < 5; i++)
             {
-                if (TriangleConnectionTable[flagIndex, 3 * i] < 0) break;
+                if (TriangleConnectionTable[flagIndex, 3 * i] < 0)
+                    break;
 
-                idx = vertList.Count;
+                currIdx = outPoints.Count;
 
-                for (j = 0; j < 3; j++)
+                for (newTriangleIdx = 0; newTriangleIdx < 3; newTriangleIdx++)
                 {
-                    vert = TriangleConnectionTable[flagIndex, 3 * i + j];
-                    indexList.Add(idx + WindingOrder[j]);
-                    vertList.Add(EdgeVertex[vert]);
+                    vertexIdx = TriangleConnectionTable[flagIndex, 3 * i + newTriangleIdx];
+                    outIndices.Add(currIdx + WindingOrder[newTriangleIdx]);
+                    outPoints.Add(TemporaryPoints[vertexIdx]);
                 }
             }
         }
