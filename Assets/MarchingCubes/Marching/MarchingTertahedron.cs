@@ -2,7 +2,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
-
+using Unity.Collections;
 using UnityEngine;
 using WARP.Terraform.API;
 
@@ -19,8 +19,7 @@ namespace MarchingCubesProject
 
         private TerraformPoint[] TetrahedronValue { get; set; }
 
-        public MarchingTertrahedron(float surface = 0.0f)
-            : base(surface)
+        public MarchingTertrahedron()
         {
             TemporaryPoints = new TerraformPoint[6];
             CubePosition = new Vector3[8];
@@ -31,7 +30,7 @@ namespace MarchingCubesProject
         /// <summary>
         /// MarchCubeTetrahedron performs the Marching Tetrahedrons algorithm on a single cube
         /// </summary>
-        protected override void March(float x, float y, float z, TerraformPoint[] inPoints, IList<TerraformPoint> outPoints, IList<int> outIndices)
+        protected override void March(float surface, float x, float y, float z, TerraformPoint[] inPoints, NativeList<TerraformPoint> outPoints, NativeList<int> outIndices)
         {
             int i;
 
@@ -52,14 +51,14 @@ namespace MarchingCubesProject
                     TetrahedronValue[j]    = inPoints[vertexInACube];
                 }
 
-                MarchTetrahedron(outPoints, outIndices);
+                MarchTetrahedron(surface, outPoints, outIndices);
             }
         }
 
         /// <summary>
         /// MarchTetrahedron performs the Marching Tetrahedrons algorithm on a single tetrahedron
         /// </summary>
-        private void MarchTetrahedron(IList<TerraformPoint> outPoints, IList<int> outIndices)
+        private void MarchTetrahedron(float surface, NativeList<TerraformPoint> outPoints, NativeList<int> outIndices)
         {
             int i, j, vert, vert0, vert1, idx;
             int flagIndex = 0, edgeFlags;
@@ -67,7 +66,7 @@ namespace MarchingCubesProject
 
             //Find which vertices are inside of the surface and which are outside
             for (i = 0; i < 4; i++)
-                if (TetrahedronValue[i].Density <= Surface)
+                if (TetrahedronValue[i].Density <= surface)
                     flagIndex |= 1 << i;
 
             //Find which edges are intersected by the surface
@@ -85,7 +84,7 @@ namespace MarchingCubesProject
                 {
                     vert0 = TetrahedronEdgeConnection[i, 0];
                     vert1 = TetrahedronEdgeConnection[i, 1];
-                    offset = GetOffset(TetrahedronValue[vert0].Density, TetrahedronValue[vert1].Density);
+                    offset = GetOffset(surface, TetrahedronValue[vert0].Density, TetrahedronValue[vert1].Density);
                     invOffset = 1.0f - offset;
 
                     TemporaryPoints[i] = TetrahedronValue[vert0];
@@ -102,7 +101,7 @@ namespace MarchingCubesProject
             {
                 if (TetrahedronTriangles[flagIndex, 3 * i] < 0) break;
 
-                idx = outPoints.Count;
+                idx = outPoints.Length;
 
                 for (j = 0; j < 3; j++)
                 {

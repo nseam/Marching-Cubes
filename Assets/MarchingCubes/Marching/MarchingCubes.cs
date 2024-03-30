@@ -1,36 +1,32 @@
-using System;
-using System.Collections;
-using System.Collections.Generic;
-
+using Unity.Collections;
+using Unity.Mathematics;
 using UnityEngine;
-using UnityEngine.UIElements;
-using WARP.Core.API;
 using WARP.Terraform.API;
 
 namespace MarchingCubesProject
 {
     public class MarchingCubes : Marching
     {
-        private Vector3[] TemporaryEdgeVertices { get; set; }
+        private float3[] TemporaryEdgeVertices { get; set; }
         private TerraformPoint[] TemporaryPoints { get; set; }
 
-        public MarchingCubes(float surface = 0.0f) : base(surface)
+        public MarchingCubes()
         {
-            TemporaryEdgeVertices = new Vector3[12];
+            TemporaryEdgeVertices = new float3[12];
 			TemporaryPoints = new TerraformPoint[12];
         }
 
         /// <summary>
         /// MarchCube performs the Marching Cubes algorithm on a single cube
         /// </summary>
-        protected override void March(float x, float y, float z, TerraformPoint[] inPoints, IList<TerraformPoint> outPoints, IList<int> outIndices)
+        protected override void March(float surface, float x, float y, float z, TerraformPoint[] inPoints, NativeList<TerraformPoint> outPoints, NativeList<int> outIndices)
         {
             int i, newTriangleIdx, vertexIdx, currIdx;
             int flagIndex = 0;
             float offset = 0.0f;
 
             //Find which vertices are inside of the surface and which are outside
-            for (i = 0; i < 8; i++) if (inPoints[i].Density <= Surface) flagIndex |= 1 << i;
+            for (i = 0; i < 8; i++) if (inPoints[i].Density <= surface) flagIndex |= 1 << i;
 
             //Find which edges are intersected by the surface
             int edgeFlags = CubeEdgeFlags[flagIndex];
@@ -44,11 +40,11 @@ namespace MarchingCubesProject
                 //if there is an intersection on this edge
                 if ((edgeFlags & (1 << i)) != 0)
                 {
-                    offset = GetOffset(inPoints[EdgeConnection[i, 0]].Density, inPoints[EdgeConnection[i, 1]].Density);
+                    offset = GetOffset(surface, inPoints[EdgeConnection[i, 0]].Density, inPoints[EdgeConnection[i, 1]].Density);
 
-                    TemporaryPoints[i].Color = Color.white;
+                    TemporaryPoints[i] = inPoints[EdgeConnection[i, 0]].Lerp(inPoints[EdgeConnection[i, 1]], offset);
 
-                    TemporaryPoints[i].Position = new Vector3(
+                    TemporaryPoints[i].Position = new float3(
                         x + (VertexOffset[EdgeConnection[i, 0], 0] + offset * EdgeDirection[i, 0]),
                         y + (VertexOffset[EdgeConnection[i, 0], 1] + offset * EdgeDirection[i, 1]),
                         z + (VertexOffset[EdgeConnection[i, 0], 2] + offset * EdgeDirection[i, 2])
@@ -62,7 +58,7 @@ namespace MarchingCubesProject
                 if (TriangleConnectionTable[flagIndex, 3 * i] < 0)
                     break;
 
-                currIdx = outPoints.Count;
+                currIdx = outPoints.Length;
 
                 for (newTriangleIdx = 0; newTriangleIdx < 3; newTriangleIdx++)
                 {

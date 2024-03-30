@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
+using Unity.Burst;
 using UnityEngine;
 using WARP.Terraform.API;
 
@@ -91,6 +92,7 @@ namespace MarchingCubesProject
         /// <param name="y">The index on the y axis.</param>
         /// <param name="z">The index on the z axis.</param>
         /// <returns>The voxels data.</returns>
+        [BurstCompile]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public ref TerraformPoint GetVoxel(int x, int y, int z)
         {
@@ -107,6 +109,7 @@ namespace MarchingCubesProject
         /// <param name="y">The index on the y axis.</param>
         /// <param name="z">The index on the z axis.</param>
         /// <returns>The voxels data.</returns>
+        [BurstCompile]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public float GetVoxelDensity(int x, int y, int z) => GetVoxel(x , y, z).Density;
 
@@ -117,6 +120,7 @@ namespace MarchingCubesProject
         /// <param name="v">The normalized index (0-1) on the y axis.</param>
         /// <param name="w">The normalized index (0-1) on the z axis.</param>
         /// <returns>The voxel data</returns>
+        [BurstCompile]
         public float GetVoxelDensity(float u, float v, float w)
         {
             float x = u * (Width - 1);
@@ -157,6 +161,7 @@ namespace MarchingCubesProject
         /// <param name="y">The index on the y axis.</param>
         /// <param name="z">The index on the z axis.</param>
         /// <returns></returns>
+        [BurstCompile]
         public Vector3 GetNormal(int x, int y, int z)
         {
             var n = GetFirstDerivative(x, y, z);
@@ -175,6 +180,7 @@ namespace MarchingCubesProject
         /// <param name="v">The normalized index (0-1 on the y axis.</param>
         /// <param name="w">The normalized index (0-1 on the z axis.</param>
         /// <returns></returns>
+        [BurstCompile]
         public Vector3 GetNormal(float u, float v, float w)
         {
             var n = GetFirstDerivative(u, v, w);
@@ -194,6 +200,7 @@ namespace MarchingCubesProject
         /// <param name="y">The index on the y axis.</param>
         /// <param name="z">The index on the z axis.</param>
         /// <returns></returns>
+        [BurstCompile]
         public Vector3 GetFirstDerivative(int x, int y, int z)
         {
             float dx_p1 = GetVoxelDensity(x + 1, y,     z);
@@ -220,6 +227,7 @@ namespace MarchingCubesProject
         /// <param name="v">The normalized index (0-1 on the y axis.</param>
         /// <param name="w">The normalized index (0-1 on the z axis.</param>
         /// <returns></returns>
+        [BurstCompile]
         public Vector3 GetFirstDerivative(float u, float v, float w)
         {
             const float h  = 0.005f;
@@ -248,6 +256,7 @@ namespace MarchingCubesProject
         /// <param name="v1"></param>
         /// <param name="t"></param>
         /// <returns></returns>
+        [BurstCompile]
         private static float Lerp(float v0, float v1, float t)
         {
             return v0 + (v1 - v0) * t;
@@ -263,6 +272,7 @@ namespace MarchingCubesProject
         /// <param name="tx"></param>
         /// <param name="ty"></param>
         /// <returns></returns>
+        [BurstCompile]
         private static float BLerp(float v00, float v10, float v01, float v11, float tx, float ty)
         {
             return Lerp(Lerp(v00, v10, tx), Lerp(v01, v11, tx), ty);

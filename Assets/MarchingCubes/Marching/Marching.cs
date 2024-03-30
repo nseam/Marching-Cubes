@@ -1,34 +1,26 @@
 using System.Collections.Generic;
+using Unity.Collections;
 using WARP.Terraform.API;
 
 namespace MarchingCubesProject
 {
     public abstract class Marching
     {
-        /// <summary>
-        /// The surface value in the voxels. Normally set to 0. 
-        /// </summary>
-        public float Surface { get; set; }
-
-        /// <summary>
-        /// Cube corner values.
-        /// </summary>
-        private TerraformPoint[] inPoints { get; set; }
-
+       
         /// <summary>
         /// Winding order of triangles use 2,1,0 or 0,1,2
         /// </summary>
         protected int[] WindingOrder { get; private set; }
 
+        public TerraformPoint[] InPoints;
+        
         /// <summary>
-        /// 
+        /// Constructor.
         /// </summary>
-        /// <param name="surface"></param>
-        public Marching(float surface)
+        public Marching()
         {
-            Surface      = surface;
-            inPoints     = new TerraformPoint[8];
-            WindingOrder = new int[] { 0, 1, 2 };
+            WindingOrder = new[] { 0, 1, 2 };
+            InPoints = new TerraformPoint[8];
         }
 
         /// <summary>
@@ -37,13 +29,13 @@ namespace MarchingCubesProject
         /// <param name="voxels"></param>
         /// <param name="verts"></param>
         /// <param name="outIndices"></param>
-        public virtual void Generate(VoxelArray voxels, IList<TerraformPoint> outPoints, IList<int> outIndices)
+        public virtual void Generate(float surface, VoxelArray voxels, NativeList<TerraformPoint> outPoints, NativeList<int> outIndices)
         {
             int width = voxels.Width;
             int height = voxels.Height;
             int depth = voxels.Depth;
 
-            UpdateWindingOrder();
+            UpdateWindingOrder(surface);
 
             int x, y, z, i;
             int ix, iy, iz;
@@ -60,11 +52,11 @@ namespace MarchingCubesProject
                             iy = y + VertexOffset[i, 1];
                             iz = z + VertexOffset[i, 2];
 
-                            inPoints[i] = voxels.Voxels[ix + iy * width + iz * width * height];
+                            InPoints[i] = voxels.Voxels[ix + iy * width + iz * width * height];
                         }
 
                         //Perform algorithm
-                        March(x, y, z, inPoints, outPoints, outIndices);
+                        March(surface, x, y, z, InPoints, outPoints, outIndices);
                     }
                 }
             }
@@ -74,9 +66,9 @@ namespace MarchingCubesProject
         /// <summary>
         /// 
         /// </summary>
-        public virtual void Generate(IList<TerraformPoint> voxels, int width, int height, int depth, IList<TerraformPoint> outPoints, IList<int> outIndices)
+        public virtual void Generate(float surface, NativeList<TerraformPoint> voxels, int width, int height, int depth, NativeList<TerraformPoint> outPoints, NativeList<int> outIndices)
         {
-            UpdateWindingOrder();
+            UpdateWindingOrder(surface);
 
             int x, y, z, i;
             int ix, iy, iz;
@@ -93,11 +85,11 @@ namespace MarchingCubesProject
                             iy = y + VertexOffset[i, 1];
                             iz = z + VertexOffset[i, 2];
 
-                            inPoints[i] = voxels[ix + iy * width + iz * width * height];
+                            InPoints[i] = voxels[ix + iy * width + iz * width * height];
                         }
 
                         //Perform algorithm
-                        March(x, y, z, inPoints, outPoints, outIndices);
+                        March(surface, x, y, z, InPoints, outPoints, outIndices);
                     }
                 }
             }
@@ -108,9 +100,9 @@ namespace MarchingCubesProject
         /// Update the winding order. 
         /// This determines how the triangles in the mesh are orientated.
         /// </summary>
-        protected virtual void UpdateWindingOrder()
+        protected virtual void UpdateWindingOrder(float surface)
         {
-            if (Surface > 0.0f)
+            if (surface > 0.0f)
             {
                 WindingOrder[0] = 2;
                 WindingOrder[1] = 1;
@@ -127,16 +119,16 @@ namespace MarchingCubesProject
          /// <summary>
         /// MarchCube performs the Marching algorithm on a single cube
         /// </summary>
-        protected abstract void March(float x, float y, float z, TerraformPoint[] inPoints, IList<TerraformPoint> outPoints, IList<int> outIndices);
+        protected abstract void March(float surface, float x, float y, float z, TerraformPoint[] inPoints, NativeList<TerraformPoint> outPoints, NativeList<int> outIndices);
 
         /// <summary>
         /// GetOffset finds the approximate point of intersection of the surface
         /// between two points with the values v1 and v2
         /// </summary>
-        protected virtual float GetOffset(float v1, float v2)
+        public static float GetOffset(float surface, float v1, float v2)
         {
             float delta = v2 - v1;
-            return (delta == 0.0f) ? Surface : (Surface - v1) / delta;
+            return (delta == 0.0f) ? surface : (surface - v1) / delta;
         }
 
         /// <summary>
@@ -149,7 +141,6 @@ namespace MarchingCubesProject
 	        {0, 0, 0},{1, 0, 0},{1, 1, 0},{0, 1, 0},
 	        {0, 0, 1},{1, 0, 1},{1, 1, 1},{0, 1, 1}
 	    };
-
     }
 
 }

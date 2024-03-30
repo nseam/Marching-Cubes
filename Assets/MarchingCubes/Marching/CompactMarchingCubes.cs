@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using Unity.Collections;
 using UnityEngine;
 using WARP.Terraform.API;
 
@@ -20,7 +21,7 @@ namespace MarchingCubesProject
         private Dictionary<int, int> VertexHashToIndex { get; set; }
         private IList<VertexData> VertexDataList { get; set; }
 
-        public CompactMarchingCubes(float surface = 0.0f) : base(surface)
+        public CompactMarchingCubes()
         {
             EdgeVertexIndices = new int[12];
             VertexHashToIndex = new Dictionary<int, int>();
@@ -36,13 +37,13 @@ namespace MarchingCubesProject
         /// <summary>
         /// March performs the Marching Cubes with Mesh Displacement algorithm on a single cube.
         /// </summary>
-        protected override void March(float x, float y, float z, TerraformPoint[] inPoints, IList<TerraformPoint> outPoints, IList<int> outIndices)
+        protected override void March(float surface, float x, float y, float z, TerraformPoint[] inPoints, NativeList<TerraformPoint> outPoints, NativeList<int> outIndices)
         {
             int flagIndex = 0;
             float offset = 0.0f;
 
             //Find which vertices are inside of the surface and which are outside
-            for (int i = 0; i < 8; i++) if (inPoints[i].Density <= Surface) flagIndex |= 1 << i;
+            for (int i = 0; i < 8; i++) if (inPoints[i].Density <= surface) flagIndex |= 1 << i;
 
             //Find which edges are intersected by the surface
             int edgeFlags = CubeEdgeFlags[flagIndex];
@@ -56,7 +57,7 @@ namespace MarchingCubesProject
                 //if there is an intersection on this edge
                 if ((edgeFlags & (1 << i)) != 0)
                 {
-                    offset = GetOffset(inPoints[EdgeConnection[i, 0]].Density, inPoints[EdgeConnection[i, 1]].Density);
+                    offset = GetOffset(surface, inPoints[EdgeConnection[i, 0]].Density, inPoints[EdgeConnection[i, 1]].Density);
 
                     Vector3 edgeVertex;
                     edgeVertex.x = x + (VertexOffset[EdgeConnection[i, 0], 0] + offset * EdgeDirection[i, 0]);
@@ -124,9 +125,9 @@ namespace MarchingCubesProject
             }
         }
 
-        public override void Generate(VoxelArray voxels, IList<TerraformPoint> outPoints, IList<int> outIndices)
+        public override void Generate(float surface, VoxelArray voxels, NativeList<TerraformPoint> outPoints, NativeList<int> outIndices)
         {
-            base.Generate(voxels, outPoints, outIndices);
+            base.Generate(surface, voxels, outPoints, outIndices);
 
             //For each vertex data entry, calculate the vertex position as an average
             //of the positions of the satellites belonging to that lattice point
